@@ -32,6 +32,7 @@ int aes_gcm_encrypt(unsigned char *plaintext, int plaintext_len, const EVP_CIPHE
 	/* Initialise the encryption operation. */
 	if(1 != EVP_EncryptInit_ex(ctx, cipher_type, NULL, NULL, NULL)) {
                 fprintf(stderr, "Error initialising operation\n");
+                EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 
@@ -40,12 +41,14 @@ int aes_gcm_encrypt(unsigned char *plaintext, int plaintext_len, const EVP_CIPHE
 	 */
 	if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, iv_len, NULL)) {
                 fprintf(stderr, "Error setting IV\n");
+                EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 
 	/* Initialise key and IV */
 	if(1 != EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv)) {
                 fprintf(stderr, "Error setting key and IV\n");
+                EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 
@@ -55,6 +58,7 @@ int aes_gcm_encrypt(unsigned char *plaintext, int plaintext_len, const EVP_CIPHE
 	 */
 	if(1 != EVP_EncryptUpdate(ctx, NULL, &len, aad, aad_len)) {
                 fprintf(stderr, "Error setting AAD\n");
+                EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 
@@ -64,6 +68,7 @@ int aes_gcm_encrypt(unsigned char *plaintext, int plaintext_len, const EVP_CIPHE
 	 */
 	if(1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len)) {
                 fprintf(stderr, "Error setting message to encrypt\n");
+                EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 	ciphertext_len = len;
@@ -74,6 +79,7 @@ int aes_gcm_encrypt(unsigned char *plaintext, int plaintext_len, const EVP_CIPHE
 	 */
 	if(1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len)) {
                 fprintf(stderr, "Error finalising encryption\n");
+		EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 	ciphertext_len += len;
@@ -81,6 +87,7 @@ int aes_gcm_encrypt(unsigned char *plaintext, int plaintext_len, const EVP_CIPHE
 	/* Get the tag */
 	if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag)) {
                 fprintf(stderr, "Error retrieving GCM-TAG\n");
+		EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 
@@ -111,18 +118,21 @@ int aes_gcm_decrypt(unsigned char *ciphertext, int ciphertext_len, const EVP_CIP
 	/* Initialise the decryption operation. */
 	if(!EVP_DecryptInit_ex(ctx, cipher_type, NULL, NULL, NULL)) {
                 fprintf(stderr, "Error decrypt init\n");
+                EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 
 	/* Set IV length. Not necessary if this is 12 bytes (96 bits) */
 	if(!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, iv_len, NULL)) {
                 fprintf(stderr, "Error setting IV\n");
+                EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 
 	/* Initialise key and IV */
 	if(!EVP_DecryptInit_ex(ctx, NULL, NULL, key, iv)) {
                 fprintf(stderr, "Error setting key and IV\n");
+                EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 
@@ -132,6 +142,7 @@ int aes_gcm_decrypt(unsigned char *ciphertext, int ciphertext_len, const EVP_CIP
 	 */
 	if(!EVP_DecryptUpdate(ctx, NULL, &len, aad, aad_len)) {
                 fprintf(stderr, "Error setting AAD\n");
+                EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 
@@ -141,6 +152,7 @@ int aes_gcm_decrypt(unsigned char *ciphertext, int ciphertext_len, const EVP_CIP
 	 */
 	if(!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len)) {
                 fprintf(stderr, "Error setting message\n");
+                EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 	plaintext_len = len;
@@ -148,6 +160,7 @@ int aes_gcm_decrypt(unsigned char *ciphertext, int ciphertext_len, const EVP_CIP
 	/* Set expected tag value. Works in OpenSSL 1.0.1d and later */
 	if(!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, tag)) {
                 fprintf(stderr, "Error setting GCM/TAG\n");
+                EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 
@@ -193,8 +206,9 @@ int aes_encrypt(unsigned char *plaintext, int plaintext_len, const EVP_CIPHER *t
 	 * is 128 bits
 	 */
 	if(1 != EVP_EncryptInit_ex(ctx, type, NULL, key, iv)) {
-                fprintf(stderr, "Error aes encrypt\n");
-                return -1;
+		fprintf(stderr, "Error aes encrypt\n");
+		EVP_CIPHER_CTX_free(ctx);
+		return -1;
         }
 
 	/*
@@ -202,7 +216,8 @@ int aes_encrypt(unsigned char *plaintext, int plaintext_len, const EVP_CIPHER *t
 	 * EVP_EncryptUpdate can be called multiple times if necessary
 	 */
 	if(1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len)) {
-                fprintf(stderr, "Error aes encrypt\n");
+		fprintf(stderr, "Error aes encrypt\n");
+		EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 	ciphertext_len = len;
@@ -213,6 +228,7 @@ int aes_encrypt(unsigned char *plaintext, int plaintext_len, const EVP_CIPHER *t
 	 */
 	if(1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len)) {
                 fprintf(stderr, "Error aes encrypt\n");
+                EVP_CIPHER_CTX_free(ctx);
                 return -1;
         }
 	ciphertext_len += len;
@@ -247,7 +263,8 @@ int aes_decrypt(unsigned char *ciphertext, int ciphertext_len, const EVP_CIPHER 
      */
     if(1 != EVP_DecryptInit_ex(ctx, type, NULL, key, iv)) {
             fprintf(stderr, "Error aes decrypt\n");
-            return -1;
+	    EVP_CIPHER_CTX_free(ctx);
+	    return -1;
     }
 
     /*
@@ -256,7 +273,8 @@ int aes_decrypt(unsigned char *ciphertext, int ciphertext_len, const EVP_CIPHER 
      */
     if(1 != EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len)) {
             fprintf(stderr, "Error aes decrypt\n");
-            return -1;
+	    EVP_CIPHER_CTX_free(ctx);
+	    return -1;
     }
     plaintext_len = len;
 
@@ -265,8 +283,9 @@ int aes_decrypt(unsigned char *ciphertext, int ciphertext_len, const EVP_CIPHER 
      * this stage.
      */
     if(1 != EVP_DecryptFinal_ex(ctx, plaintext + len, &len)) {
-            fprintf(stderr, "Error aes decrypt\n");
-            return -1;
+	    fprintf(stderr, "Error aes decrypt\n");
+	    EVP_CIPHER_CTX_free(ctx);
+	    return -1;
     }
     plaintext_len += len;
 
@@ -285,26 +304,31 @@ int HKDF_Extract(const unsigned char *salt, const size_t salt_len, const unsigne
 
 	if (EVP_PKEY_derive_init(pctx) <= 0) {
 		printf("Error init\n");
+		EVP_PKEY_CTX_free(pctx);
 		return -1;
 	}
 	
 	if (EVP_PKEY_CTX_hkdf_mode(pctx, mode) <= 0) {
 		printf("Error set_hkdf_mode\n");
+                EVP_PKEY_CTX_free(pctx);
 		return -1;
 	}
 
 	if (EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha256()) <= 0) {
 		printf("Error set_hkdf_md\n");
+                EVP_PKEY_CTX_free(pctx);
 		return -1;
 	}
 
 	if (EVP_PKEY_CTX_set1_hkdf_key(pctx, key, key_len) <= 0) {
 		printf("Error set1_hkdf_key\n");
+                EVP_PKEY_CTX_free(pctx);
 		return -1;
 	}
 
 	if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, salt, salt_len) <= 0) {
 		printf("Error set1_hkdf_salt\n");
+                EVP_PKEY_CTX_free(pctx);
 		return -1;
 	}
 
@@ -313,6 +337,7 @@ int HKDF_Extract(const unsigned char *salt, const size_t salt_len, const unsigne
 		printf("Error deriving key\n");
 		return -1;
 	}
+	EVP_PKEY_CTX_free(pctx);
 	return len;
 }
 
@@ -323,34 +348,40 @@ int HKDF_Expand(const unsigned char *key, const size_t key_len, const unsigned c
 	pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
 	if (EVP_PKEY_derive_init(pctx) <= 0) {
 		printf("Error init\n");
+                EVP_PKEY_CTX_free(pctx);
 		return -1;
 	}
 	
 	if (EVP_PKEY_CTX_hkdf_mode(pctx, mode) <= 0) {
 		printf("Error set_hkdf_mode\n");
+                EVP_PKEY_CTX_free(pctx);
 		return -1;
 	}
 
 	if (EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha256()) <= 0) {
 		printf("Error set_hkdf_md\n");
+                EVP_PKEY_CTX_free(pctx);
 		return -1;
 	}
 
 	if (EVP_PKEY_CTX_set1_hkdf_key(pctx, key, key_len) <= 0) {
 		printf("Error set1_hkdf_key\n");
+                EVP_PKEY_CTX_free(pctx);
 		return -1;
 	}
 
 	if (EVP_PKEY_CTX_add1_hkdf_info(pctx, label, label_len) <= 0) {
+                EVP_PKEY_CTX_free(pctx);
 		return -1;
 	}
 
 	size_t len = hash_len;
 	if (EVP_PKEY_derive(pctx, hash, &len) <= 0) {
 		printf("Error deriving key\n");
+                EVP_PKEY_CTX_free(pctx);
 		return -1;
 	}
-
+	EVP_PKEY_CTX_free(pctx);
 	return len;
 }
 
